@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using System.Windows.Threading;
 using WaTor.Simulation;
 
 namespace WaTor.Display
@@ -8,24 +7,30 @@ namespace WaTor.Display
     public static class App
     {
         public static readonly Parameters Parameters = new Parameters {
-            SeaSizeX = 80,
-            SeaSizeY = 80,
-            InitialFishCount = 100,
+            SeaSizeX = 200,
+            SeaSizeY = 200,
+            InitialFishCount = 5000,
             InitialSharkCount = 10,
-            BlockWidth = 20,
-            BlockHeight = 20,
-            ThreadSleepTime = TimeSpan.FromSeconds(.1),
-            FishReproductionRate = 30,
+            BlockWidth = 50,
+            BlockHeight = 50,
+            ThreadSleepTime = TimeSpan.FromSeconds(0.00),
+            ScreenRefreshRate = TimeSpan.FromSeconds(1),
+            FishReproductionRate = 1,
+            SharkReproductionRate = 500,
+            SharkEnergyLoss = 9900,
+            EnergyInFish = 10000,
+            InitialSharkEnergy = 100000,
         };
 
         [STAThread]
         public static void Main()
         {
-            var random = new Random(555);
+            var random = new Random(11);
 
             SeaBlock[,] theSea;
             {//Generate initial sea
                 theSea = new SeaBlock[Parameters.SeaSizeX, Parameters.SeaSizeY];
+
                 for (int i = 0; i < Parameters.InitialFishCount; i++)
                 {
                     int x, y;
@@ -36,6 +41,17 @@ namespace WaTor.Display
                     } while (theSea[x, y] != null);
 
                     theSea[x, y] = new SeaBlock(OceanBlockType.Fish);
+                }
+                for (int i = 0; i < Parameters.InitialSharkCount; i++)
+                {
+                    int x, y;
+                    do
+                    {
+                        x = random.Next(Parameters.SeaSizeX);
+                        y = random.Next(Parameters.SeaSizeY);
+                    } while (theSea[x, y] != null);
+
+                    theSea[x, y] = new SeaBlock(OceanBlockType.Shark);
                 }
 
                 for (int x = 0; x < Parameters.SeaSizeX; x++)
@@ -68,7 +84,8 @@ namespace WaTor.Display
 
                         bool isEven = (i % 2) == (j % 2);
 
-                        chunks[i, j] = new SeaChunk {
+                        chunks[i, j] = new SeaChunk
+                        {
                             GameParameters = Parameters,
                             FromX = fromX,
                             FromY = fromY,
@@ -92,12 +109,13 @@ namespace WaTor.Display
             }
 
 
-            var window = new MainWindow(Parameters, theSea) {
+            var window = new MainWindow(Parameters, theSea)
+            {
                 Width = Parameters.SeaSizeX * 10,
                 Height = Parameters.SeaSizeY * 10,
             };
 
-            
+
 
             window.ShowDialog();
             cancellationSource.Cancel();

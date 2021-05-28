@@ -9,5 +9,5 @@
     <!--<Grid Name="xOceanGrid">
 
     </Grid>-->
-    <Image Name="xImage"/>
+    <Image Name="xImage" SnapsToDevicePixels="False"/>
 </Window>

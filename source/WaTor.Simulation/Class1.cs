@@ -11,7 +11,7 @@ namespace WaTor.Simulation
         public EvenOddTracker(int totalEven, int totalOdd)
         {
             _totalEven = totalEven;
-            _totalEven = totalOdd;
+            _totalOdd = totalOdd;
             //this.evenSemaphore = new Semaphore(totalEven, totalEven);
             //this.oddSemaphore = new Semaphore(0, totalOdd);
         }
@@ -28,7 +28,7 @@ namespace WaTor.Simulation
             else DoOdd(action);
         }
 
-        private void DoEven(Action action)
+        public void DoEven(Action action)
         {
             if (_totalOdd == 0)
             {
@@ -63,7 +63,7 @@ namespace WaTor.Simulation
 
         }
 
-        private void DoOdd(Action action)
+        public void DoOdd(Action action)
         {
             if (_totalEven == 0)
             {
@@ -104,11 +104,42 @@ namespace WaTor.Simulation
         public int SeaSizeY { get; init; }
         public int InitialFishCount { get; init; }
         public int InitialSharkCount { get; init; }
-        public int BlockWidth { get; init; }
-        public int BlockHeight { get; init; }
         public TimeSpan ThreadSleepTime { get; init; }
 
-        public uint FishReproductionRate { get; init; }
+        public int FishReproductionRate { get; init; }
+        public int SharkReproductionRate { get; init; }
+        public int SharkEnergyLoss { get; init; }
+        public int EnergyInFish { get; init; }
+        public int InitialSharkEnergy { get; init; }
+        public int TotalThreadCount { get; init; }
+        public TimeSpan ScreenRefreshRate { get; init; }
+        public TimeSpan SimulationDuration { get; init; }
+
+        public void AssignFromArgs(IReadOnlyList<string> args)
+        {
+            Dictionary<string, string> map = new(StringComparer.InvariantCultureIgnoreCase);
+            for (int i = 0; i < args.Count - 1; i++)
+            {
+                if (args[i].StartsWith("-"))
+                {
+                    map[args[i].Trim('-')] = args[i + 1];
+                }
+            }
+            ;
+            var fields = GetType().GetProperties().Where(x => x.GetSetMethod() != null);
+            foreach (var field in fields)
+            {
+                if (!map.TryGetValue(field.Name, out string value))
+                    continue;
+
+                if (field.PropertyType == typeof(int))
+                    field.SetValue(this, int.Parse(value));
+                else if (field.PropertyType == typeof(TimeSpan))
+                    field.SetValue(this, TimeSpan.FromMilliseconds(int.Parse(value)));
+                else
+                    throw new NotSupportedException("ebi si mamata");
+            }
+        }
     }
 
     public static class RandomExtensions
@@ -161,7 +192,8 @@ namespace WaTor.Simulation
         }
 
         public OceanBlockType Type { get; internal set; }
-        public ulong TimeBorn { get; internal set; } = 0;
+        public long TimeBorn { get; internal set; } = 0;
+        public int FishEaten { get; internal set; } = 0;
     }
 
     public class SeaChunk
@@ -175,36 +207,13 @@ namespace WaTor.Simulation
         public bool IsEven { get; init; }
         public Random Random { get; init; }
 
-        int started = 0;
-        CancellationToken loopCancellationToken;
-        EvenOddTracker evenOddTracker;
-        public void StartThread(CancellationToken loopCancellationToken, EvenOddTracker evenOddTracker)
-        {
-            if (Interlocked.CompareExchange(ref started, 1, comparand: 0) is 0)
-            {
-                this.evenOddTracker = evenOddTracker;
-                this.loopCancellationToken = loopCancellationToken;
-                var thread = new Thread(new ThreadStart(Loop));
-                thread.Start();
-            }
-        }
-
-        private void Loop()
-        {
-            for (ulong time = 0; ; ++time)
-            {
-                evenOddTracker.Do(IsEven, () => {
-                    PerformIteration(time);
-                    Thread.Sleep(GameParameters.ThreadSleepTime);
-                });
-            }
-        }
-
-        private void PerformIteration(ulong time)
+        public void PerformIteration(long time)
         {
             Debug.WriteLine("Even: " + IsEven);
 
-            foreach ((int x, int y) in GetCoordinates().RandomShuffle(Random))
+            IReadOnlyList<(int x, int y)> shuffledCoordinates = GetCoordinates().RandomShuffle(Random).ToList(); ;
+
+            foreach ((int x, int y) in shuffledCoordinates)
             {
                 (int x1, int y1) = Random.Move(x, y, GameParameters.SeaSizeX, GameParameters.SeaSizeY);
                 SeaBlock current = Ocean[x, y];
@@ -213,17 +222,80 @@ namespace WaTor.Simulation
                 if (current.Type != OceanBlockType.Fish) continue;
                 if (next.Type != OceanBlockType.None) continue;
 
-                ulong timeLived = time >= current.TimeBorn ? time - current.TimeBorn : 0;
+                long timeLived = time >= current.TimeBorn ? time - current.TimeBorn : 0;
 
                 next.Type = current.Type;
                 next.TimeBorn = current.TimeBorn;
-                if (timeLived % GameParameters.FishReproductionRate == 0)
+                if (timeLived > 0 && timeLived % GameParameters.FishReproductionRate == 0)
                 {
                     current.Type = OceanBlockType.Fish;
                     current.TimeBorn = time;
                 }
                 else current.Type = OceanBlockType.None;
 
+            }
+            foreach ((int currentX, int currentY) in shuffledCoordinates)
+            {
+                SeaBlock current = Ocean[currentX, currentY];
+
+                if (current.Type != OceanBlockType.Shark) continue;
+
+                long timeLived = time >= current.TimeBorn ? time - current.TimeBorn : 0;
+                long energy =
+                    GameParameters.InitialSharkEnergy
+                    - timeLived * GameParameters.SharkEnergyLoss
+                    + current.FishEaten * GameParameters.EnergyInFish;
+
+                if (energy <= 0)
+                {
+                    current.Type = OceanBlockType.None;
+                    continue;
+                }
+
+                (int x, int y)[] adjacentFish = new[]{
+                    (currentX-1, currentY),
+                    (currentX+1, currentY),
+                    (currentX, currentY-1),
+                    (currentX, currentY+1),
+                }.Select(item =>
+                {
+                    (int x, int y) = item;
+
+                    if (x == -1) x = GameParameters.SeaSizeX - 1;
+                    if (y == -1) y = GameParameters.SeaSizeY - 1;
+                    if (x == GameParameters.SeaSizeX) x = 0;
+                    if (y == GameParameters.SeaSizeY) y = 0;
+
+                    return (x, y);
+                })
+                .Where(item => Ocean[item.x, item.y].Type == OceanBlockType.Fish)
+                .ToArray();
+
+                int nextX, nextY;
+                if (adjacentFish.Length > 0)
+                {
+                    int ix = Random.Next(adjacentFish.Length);
+                    (nextX, nextY) = adjacentFish[ix];
+                }
+                else
+                {
+                    (nextX, nextY) = Random.Move(currentX, currentY, GameParameters.SeaSizeX, GameParameters.SeaSizeY);
+                }
+                SeaBlock next = Ocean[nextX, nextY];
+
+                if (next.Type == OceanBlockType.Shark) continue;
+                bool ateFish = next.Type == OceanBlockType.Fish;
+
+                next.Type = current.Type;
+                next.TimeBorn = current.TimeBorn;
+                next.FishEaten = current.FishEaten + (ateFish ? 1 : 0);
+                if (timeLived > 0 && timeLived % GameParameters.SharkReproductionRate == 0)
+                {
+                    current.Type = OceanBlockType.Shark;
+                    current.TimeBorn = time;
+                    current.FishEaten = 0;
+                }
+                else current.Type = OceanBlockType.None;
             }
         }
 
