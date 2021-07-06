@@ -9,19 +9,21 @@ namespace Wator_Display_Forms
         [STAThread]
         public static void Main()
         {
-            var Parameters = new Parameters {
-                SeaSizeX = 800,
-                SeaSizeY = 800,
-                InitialFishCount = 50000,
-                InitialSharkCount = 100,
+            var Parameters = new Parameters
+            {
+                SeaSizeX = 1920,
+                SeaSizeY = 1080,
+                InitialFishCount = 50000 * 100,
+                InitialSharkCount = 100 * 100,
                 ThreadSleepTime = TimeSpan.FromSeconds(0.00),
-                ScreenRefreshRate = TimeSpan.FromSeconds(1),
-                TotalThreadCount = 2,
-                FishReproductionRate = 3,
-                SharkReproductionRate = 25,
-                SharkEnergyLoss = 80,
-                EnergyInFish = 100,
-                InitialSharkEnergy = 150,
+                ScreenRefreshRate = TimeSpan.FromSeconds(.2),
+                TotalThreadCount = 5,
+                FishReproductionInterval = 3,
+                SharkReproductionInterval = 40,
+                SharkEnergyLoss = 55,
+                EnergyInFish = 40,
+                InitialSharkEnergy = 1400,
+                RandomizeInitialPozitions = true,
             };
 
             var random = new Random(11);
@@ -29,9 +31,12 @@ namespace Wator_Display_Forms
             SeaChunk[,] chunks = WaTor.Simulation.WaTor.ChunkUpSea(Parameters, random, theSea);
             WaTor.Simulation.WaTor.RunSimulation(Parameters, chunks);
 
-            var window = new Form1(Parameters, theSea) {
+            var window = new Form1(Parameters, theSea)
+            {
                 Width = Parameters.SeaSizeX * 10,
                 Height = Parameters.SeaSizeY * 10,
+                WindowState = System.Windows.Forms.FormWindowState.Maximized,
+                FormBorderStyle = System.Windows.Forms.FormBorderStyle.None,
             };
 
             window.ShowDialog();

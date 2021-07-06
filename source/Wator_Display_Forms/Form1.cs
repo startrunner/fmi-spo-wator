@@ -44,10 +44,10 @@ namespace Wator_Display_Forms
                 foreach ((int x, int y) in coordinates)
                 {
 
-                    Color color = Color.White;
+                    Color color = Color.Black;
                     var block = theSea[x, y];
-                    if (block.Type == OceanBlockType.Fish) color = Color.Green;
-                    if (block.Type == OceanBlockType.Shark) color = Color.Blue;
+                    if (block.Type == SeaBlockType.Fish) color = Color.Green;
+                    if (block.Type == SeaBlockType.Shark) color = Color.Purple;
 
                     //pixels[x, y] = GetColor(color);
                     image.SetPixel(x, y, color);

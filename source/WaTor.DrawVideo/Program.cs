@@ -19,10 +19,10 @@ namespace WaTor.DrawVideo
                 InitialFishCount = 100,
                 InitialSharkCount = 10,
                 ThreadSleepTime = TimeSpan.FromSeconds(0.00),
-                ScreenRefreshRate = TimeSpan.FromSeconds(.1),
+                ScreenRefreshRate = TimeSpan.FromSeconds(0),
                 TotalThreadCount = 10,
-                FishReproductionRate = 5,
-                SharkReproductionRate = 20,
+                FishReproductionInterval = 5,
+                SharkReproductionInterval = 20,
                 SharkEnergyLoss = 80,
                 EnergyInFish = 100,
                 InitialSharkEnergy = 250,
@@ -58,10 +58,10 @@ namespace WaTor.DrawVideo
                     Span<Rgb24> bitmapRow = bitmap.GetPixelRowSpan(x);
                     for (int y = 0; y < gameParameters.SeaSizeY; ++y)
                     {
-                        Color color = Color.White;
+                        Color color = Color.Black;
                         var block = theSea[x, y];
-                        if (block.Type == OceanBlockType.Fish) color = Color.Green;
-                        if (block.Type == OceanBlockType.Shark) color = Color.Blue;
+                        if (block.Type == SeaBlockType.Fish) color = Color.Green;
+                        if (block.Type == SeaBlockType.Shark) color = Color.Blue;
 
                         bitmapRow[y] = color.ToPixel<Rgb24>();
                     }
@@ -72,9 +72,9 @@ namespace WaTor.DrawVideo
                     Console.WriteLine($"Frame {frame} of {TotalFrames}...");
                 }
 
-                string fileName = $"frames/{frame}.bmp";
-                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(fileName)));
-                bitmap.Save(fileName);
+                //string fileName = $"frames/{frame}.bmp";
+                //Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(fileName)));
+                //bitmap.Save(fileName);
                 Thread.Sleep(gameParameters.ScreenRefreshRate);
             }
 

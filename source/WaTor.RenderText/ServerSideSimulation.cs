@@ -7,39 +7,49 @@ using WaTor.Simulation;
 
 namespace WaTor.RenderText
 {
-    class Program
+    class ServerSideSimulation
     {
         static async Task Main(string[] args)
         {
             var simulationParameters = new Parameters
             {
-                SeaSizeX = 800,
+                SeaSizeX = 1000,
                 SeaSizeY = 800,
                 InitialFishCount = 50000,
                 InitialSharkCount = 100,
                 ThreadSleepTime = TimeSpan.FromSeconds(0.00),
                 ScreenRefreshRate = TimeSpan.FromSeconds(1),
                 TotalThreadCount = 4,
-                FishReproductionRate = 3,
-                SharkReproductionRate = 25,
+                FishReproductionInterval = 3,
+                SharkReproductionInterval = 25,
                 SharkEnergyLoss = 80,
                 EnergyInFish = 100,
                 InitialSharkEnergy = 150,
-                SimulationDuration = TimeSpan.FromMinutes(1),
+                SimulationDuration = TimeSpan.FromSeconds(10),
             };
             simulationParameters.AssignFromArgs(/*"-TotalThreadCount 3".Split()*/args);
 
             var random = new Random(11);
             SeaBlock[,] theSea = WaTor.Simulation.WaTor.GenerateSea(simulationParameters, random);
             SeaChunk[,] chunks = WaTor.Simulation.WaTor.ChunkUpSea(simulationParameters, random, theSea);
-            var threadStates = Simulation.WaTor.RunSimulation(simulationParameters, chunks);
+            var threadStates = WaTor.Simulation.WaTor.RunSimulation(simulationParameters, chunks);
 
             DateTime endTime = DateTime.Now + simulationParameters.SimulationDuration;
 
-            using (var logFile = File.OpenWrite("log.txt"))
-            using (var logWriter = new StreamWriter(logFile))
-            using (var renderFile = File.OpenWrite("rendered.txt"))
-            using (var renderWriter = new StreamWriter(renderFile))
+            Directory.CreateDirectory("logs");
+            string logFilePath;
+            {
+                string logFileBase = $"{simulationParameters.SeaSizeX}x{simulationParameters.SeaSizeY}_{simulationParameters.TotalThreadCount}Th_{simulationParameters.SimulationDuration.TotalMinutes:0.##}Min";
+                string CreateLogsPath(int ix) => $"logs/{logFileBase}_{ix.ToString().PadLeft(2, '0')}.txt";
+                int suffix = 1;
+                while (File.Exists(CreateLogsPath(suffix))) suffix++;
+                logFilePath = CreateLogsPath(suffix);
+            }
+
+            //using (var logFile = File.OpenWrite("logs/" + logFileName)) 
+            //using (var logWriter = new StreamWriter(logFile))
+            //using (var renderFile = File.OpenWrite("rendered.txt"))
+            //using (var renderWriter = new StreamWriter(renderFile))
             {
                 await WriteLine("Config: " + JsonConvert.SerializeObject(simulationParameters, Formatting.Indented) + Environment.NewLine);
 
@@ -50,9 +60,9 @@ namespace WaTor.RenderText
                         for (int y = 0; y < simulationParameters.SeaSizeY; y++)
                         {
                             int iValue = (int)theSea[x, y].Type;
-                            await renderWriter.WriteAsync((char)('0' + iValue));
+                            //await renderWriter.WriteAsync((char)('0' + iValue));
                         }
-                        await renderWriter.WriteLineAsync();
+                        //await renderWriter.WriteLineAsync();
                     }
 
                     bool willEnd = DateTime.Now >= endTime;
@@ -61,10 +71,19 @@ namespace WaTor.RenderText
 
                     if (willEnd)
                     {
-                        await logWriter.FlushAsync();
-                        await renderWriter.FlushAsync();
-                        logWriter.Close();
-                        renderWriter.Close();
+                        long levelReached = threadStates.Min(x => x.Time);
+                        long fishPopulation = theSea.OfType<SeaBlock>().Count(x => x.Type == SeaBlockType.Fish);
+                        long sharkPopulation = theSea.OfType<SeaBlock>().Count(x => x.Type == SeaBlockType.Shark);
+
+                        await File.WriteAllTextAsync(
+                            logFilePath,
+                            JsonConvert.SerializeObject(new { levelReached, fishPopulation, sharkPopulation, threads = simulationParameters.TotalThreadCount }, Formatting.Indented)
+                        );
+
+                        //await logWriter.FlushAsync();
+                        //await renderWriter.FlushAsync();
+                        //logWriter.Close();
+                        //renderWriter.Close();
                         Environment.Exit(0);
                     }
 
@@ -79,8 +98,9 @@ namespace WaTor.RenderText
                 }
                 Task WriteLine(string txt = "")
                 {
-                    Console.WriteLine(txt);
-                    return renderWriter.WriteLineAsync(txt);
+                    //Console.WriteLine(txt);
+                    //return renderWriter.WriteLineAsync(txt);
+                    return Task.CompletedTask;
                 }
             }
         }

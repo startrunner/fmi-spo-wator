@@ -38,10 +38,10 @@ namespace Wator_Display_Forms
             this.xImage.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.xImage.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.xImage.Location = new System.Drawing.Point(12, 12);
+            this.xImage.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.xImage.Location = new System.Drawing.Point(0, 0);
             this.xImage.Name = "xImage";
-            this.xImage.Size = new System.Drawing.Size(595, 374);
+            this.xImage.Size = new System.Drawing.Size(619, 398);
             this.xImage.TabIndex = 0;
             this.xImage.TabStop = false;
             // 

@@ -8,30 +8,31 @@ namespace WaTor.Simulation
     public static class WaTor
     {
 
-        public static SeaChunk[,] ChunkUpSea(Parameters Parameters, Random random, SeaBlock[,] theSea)
+        public static SeaChunk[,] ChunkUpSea(Parameters parameters, Random random, SeaBlock[,] theSea)
         {
             SeaChunk[,] chunks;
             {//Chunk up the sea
-                int chunkCountOnSide = (int)Math.Sqrt(Parameters.TotalThreadCount);
+                int chunkCountOnSide = (int)Math.Sqrt(parameters.TotalThreadCount);
                 if (chunkCountOnSide % 2 == 1) ++chunkCountOnSide;
 
 
-                int defaultChunkSize = Parameters.SeaSizeX / chunkCountOnSide;
-                int chunkSizeRemainderX = Parameters.SeaSizeX % chunkCountOnSide;
-                int chunkSizeRemainderY = Parameters.SeaSizeY % chunkCountOnSide;
+                int defaultChunkSizeX = parameters.SeaSizeX / chunkCountOnSide;
+                int defaultChunkSizeY = parameters.SeaSizeY / chunkCountOnSide;
+                int chunkSizeRemainderX = parameters.SeaSizeX % chunkCountOnSide;
+                int chunkSizeRemainderY = parameters.SeaSizeY % chunkCountOnSide;
 
                 chunks = new SeaChunk[chunkCountOnSide, chunkCountOnSide];
 
                 int fromX = 0, toX;
                 for (int i = 0; i < chunkCountOnSide; i++)
                 {
-                    toX = fromX + defaultChunkSize - 1;
+                    toX = fromX + defaultChunkSizeX - 1;
                     if (i < chunkSizeRemainderX) ++toX;
 
                     int fromY = 0, toY;
                     for (int j = 0; j < chunkCountOnSide; j++)
                     {
-                        toY = fromY + defaultChunkSize - 1;
+                        toY = fromY + defaultChunkSizeY - 1;
                         if (j < chunkSizeRemainderY) ++toY;
 
                         chunks[i, j] = new SeaChunk
@@ -40,7 +41,7 @@ namespace WaTor.Simulation
                             FromY = fromY,
                             ToX = toX,
                             ToY = toY,
-                            GameParameters = Parameters,
+                            GameParameters = parameters,
                             IsEven = i % 2 == j % 2,
                             Ocean = theSea,
                             Random = new Random(random.Next()),
@@ -52,7 +53,22 @@ namespace WaTor.Simulation
                 }
             }
 
+            VerifyChunks(parameters, chunks);
             return chunks;
+        }
+
+        private static void VerifyChunks(Parameters parameters, SeaChunk[,] chunks)
+        {
+            int[,] verification = new int[parameters.SeaSizeX, parameters.SeaSizeY];
+            foreach (SeaChunk chunk in chunks)
+            {
+                for (int x = chunk.FromX; x <= chunk.ToX; x++)
+                    for (int y = chunk.FromY; y <= chunk.ToY; y++)
+                        verification[x, y]++;
+            }
+
+            if (verification.OfType<int>().Count(x => x == 1) != parameters.SeaSizeX * parameters.SeaSizeY)
+                throw new Exception("Bad chunks generated");
         }
 
         public sealed class ThreadState
@@ -125,6 +141,52 @@ namespace WaTor.Simulation
             {//Generate initial sea
                 theSea = new SeaBlock[Parameters.SeaSizeX, Parameters.SeaSizeY];
 
+                if (Parameters.RandomizeInitialPozitions)
+                {
+                    (int x, int y) GetRandomPosition()
+                    {
+                        int x, y;
+                        do
+                        {
+                            x = random.Next(Parameters.SeaSizeX);
+                            y = random.Next(Parameters.SeaSizeY);
+                        } while (theSea[x, y] != null);
+                        return (x, y);
+                    }
+
+                    int fishToSpawn = Parameters.InitialFishCount;
+                    int sharksToSpawn = Parameters.InitialSharkCount;
+                    while (fishToSpawn > 0 && sharksToSpawn > 0)
+                    {
+                        (int baseX, int baseY) = GetRandomPosition();
+                        for (int i = 0; i < 16; i++)
+                        {
+                            for (int j = 0; j < 16; j++)
+                            {
+                                int x = (baseX + i) % Parameters.SeaSizeX;
+                                int y = (baseY + j) % Parameters.SeaSizeY;
+                                if (theSea[x, y] != null) continue;
+
+                                bool willBeFish = (sharksToSpawn <= 0 || (j % 5 <3)) && fishToSpawn >= 0;
+                                bool willBeShark = sharksToSpawn >= 0 && !willBeFish;
+
+                                if (willBeFish)
+                                {
+                                    theSea[x, y] = new SeaBlock(SeaBlockType.Fish);
+                                    --fishToSpawn;
+                                }
+                                else if (willBeShark)
+                                {
+                                    theSea[x, y] = new SeaBlock(SeaBlockType.Shark);
+                                    --sharksToSpawn;
+                                }
+
+                            }
+                        }
+
+                    }
+                }
+                else
                 {
                     int fishCount = 0, sharkCount = 0;
                     for (int x = 0; x < Parameters.SeaSizeX; x++)
@@ -133,46 +195,20 @@ namespace WaTor.Simulation
                         {
                             if (++fishCount <= Parameters.InitialFishCount)
                             {
-                                theSea[x, y] = new SeaBlock(OceanBlockType.Fish);
+                                theSea[x, y] = new SeaBlock(SeaBlockType.Fish);
                             }
                             else if (++sharkCount <= Parameters.InitialSharkCount)
                             {
-                                theSea[x, y] = new SeaBlock(OceanBlockType.Shark);
+                                theSea[x, y] = new SeaBlock(SeaBlockType.Shark);
                             }
                         }
-                    }
-                }
-
-                if (false)
-                {
-                    for (int i = 0; i < Parameters.InitialFishCount; i++)
-                    {
-                        int x, y;
-                        do
-                        {
-                            x = random.Next(Parameters.SeaSizeX);
-                            y = random.Next(Parameters.SeaSizeY);
-                        } while (theSea[x, y] != null);
-
-                        theSea[x, y] = new SeaBlock(OceanBlockType.Fish);
-                    }
-                    for (int i = 0; i < Parameters.InitialSharkCount; i++)
-                    {
-                        int x, y;
-                        do
-                        {
-                            x = random.Next(Parameters.SeaSizeX);
-                            y = random.Next(Parameters.SeaSizeY);
-                        } while (theSea[x, y] != null);
-
-                        theSea[x, y] = new SeaBlock(OceanBlockType.Shark);
                     }
                 }
 
                 for (int x = 0; x < Parameters.SeaSizeX; x++)
                     for (int y = 0; y < Parameters.SeaSizeY; y++)
                         if (theSea[x, y] is null)
-                            theSea[x, y] = new SeaBlock(OceanBlockType.None);
+                            theSea[x, y] = new SeaBlock(SeaBlockType.None);
             }
 
             return theSea;
