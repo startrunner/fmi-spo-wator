@@ -1,9 +1,9 @@
 ﻿namespace WaTor.Simulation
 {
-    public enum SeaBlockType
+    public enum SeaBlockType : byte
     {
+        None = 0,
         Fish,
         Shark,
-        None,
     }
 }

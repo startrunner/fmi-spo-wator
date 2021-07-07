@@ -13,9 +13,10 @@ namespace WaTor.DrawVideo
     {
         static void Main(string[] args)
         {
-            var gameParameters = new Parameters {
-                SeaSizeX = 1000,
-                SeaSizeY = 1000,
+            var gameParameters = new Parameters
+            {
+                SeaSizeX = 1920,
+                SeaSizeY = 1080,
                 InitialFishCount = 100,
                 InitialSharkCount = 10,
                 ThreadSleepTime = TimeSpan.FromSeconds(0.00),

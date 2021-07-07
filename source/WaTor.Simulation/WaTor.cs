@@ -150,7 +150,7 @@ namespace WaTor.Simulation
                         {
                             x = random.Next(Parameters.SeaSizeX);
                             y = random.Next(Parameters.SeaSizeY);
-                        } while (theSea[x, y] != null);
+                        } while (theSea[x, y].Type != SeaBlockType.None);
                         return (x, y);
                     }
 
@@ -165,9 +165,9 @@ namespace WaTor.Simulation
                             {
                                 int x = (baseX + i) % Parameters.SeaSizeX;
                                 int y = (baseY + j) % Parameters.SeaSizeY;
-                                if (theSea[x, y] != null) continue;
+                                if (theSea[x, y].Type != SeaBlockType.None) continue;
 
-                                bool willBeFish = (sharksToSpawn <= 0 || (j % 5 <3)) && fishToSpawn >= 0;
+                                bool willBeFish = (sharksToSpawn <= 0 || (j % 5 < 3)) && fishToSpawn >= 0;
                                 bool willBeShark = sharksToSpawn >= 0 && !willBeFish;
 
                                 if (willBeFish)
@@ -205,10 +205,10 @@ namespace WaTor.Simulation
                     }
                 }
 
-                for (int x = 0; x < Parameters.SeaSizeX; x++)
-                    for (int y = 0; y < Parameters.SeaSizeY; y++)
-                        if (theSea[x, y] is null)
-                            theSea[x, y] = new SeaBlock(SeaBlockType.None);
+                //for (int x = 0; x < Parameters.SeaSizeX; x++)
+                //    for (int y = 0; y < Parameters.SeaSizeY; y++)
+                //        if (theSea[x, y] is null)
+                //            theSea[x, y] = new SeaBlock(SeaBlockType.None);
             }
 
             return theSea;

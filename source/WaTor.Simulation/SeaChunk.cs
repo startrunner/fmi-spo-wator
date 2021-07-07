@@ -6,7 +6,7 @@ using System.Linq;
 namespace WaTor.Simulation
 {
 
-    public class SeaChunk
+    public struct SeaChunk
     {
         public SeaBlock[,] Ocean { get; init; }
         public Parameters GameParameters { get; init; }
@@ -19,21 +19,19 @@ namespace WaTor.Simulation
 
         public void PerformIteration(long time)
         {
+            Parameters GameParameters = this.GameParameters;
+            SeaBlock[,] Ocean = this.Ocean;
+
             Debug.WriteLine("Even: " + IsEven);
 
             IReadOnlyList<(int x, int y)> shuffledCoordinates = GetCoordinates().RandomShuffle(Random).ToList(); ;
 
             foreach ((int x, int y) in shuffledCoordinates)
             {
-                SeaBlock current, next;
-                int x1, y1;
-                try
-                {
-                    (x1, y1) = Random.Move(x, y, GameParameters.SeaSizeX, GameParameters.SeaSizeY);
-                    current = Ocean[x, y];
-                    next = Ocean[x1, y1];
-                }
-                catch (Exception e) { throw; }
+                (int x1, int y1) = Random.Move(x, y, GameParameters.SeaSizeX, GameParameters.SeaSizeY);
+                ref SeaBlock current = ref Ocean[x, y];
+                ref SeaBlock next = ref Ocean[x1, y1];
+
 
                 if (current.Type != SeaBlockType.Fish) continue;
                 if (next.Type != SeaBlockType.None) continue;
@@ -52,7 +50,7 @@ namespace WaTor.Simulation
             }
             foreach ((int currentX, int currentY) in shuffledCoordinates)
             {
-                SeaBlock current = Ocean[currentX, currentY];
+                ref SeaBlock current = ref Ocean[currentX, currentY];
 
                 if (current.Type != SeaBlockType.Shark) continue;
 
@@ -97,7 +95,7 @@ namespace WaTor.Simulation
                 {
                     (nextX, nextY) = Random.Move(currentX, currentY, GameParameters.SeaSizeX, GameParameters.SeaSizeY);
                 }
-                SeaBlock next = Ocean[nextX, nextY];
+                ref SeaBlock next = ref Ocean[nextX, nextY];
 
                 if (next.Type == SeaBlockType.Shark) continue;
                 bool ateFish = next.Type == SeaBlockType.Fish;
